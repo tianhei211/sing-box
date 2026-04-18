@@ -1,6 +1,6 @@
 #!/bin/bash
 
-author=233boy
+author=tianhei211
 # github=https://github.com/tianhei211/sing-box
 
 # bash fonts colors
