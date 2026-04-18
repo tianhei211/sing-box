@@ -1,7 +1,7 @@
 #!/bin/bash
 
-author=tianhei211
-# github=https://github.com/tianhei211/sing-box
+author=233boy
+# github=https://github.com/233boy/sing-box
 
 # bash fonts colors
 red='\e[31m'
@@ -177,7 +177,7 @@ download() {
         is_ok=$is_core_ok
         ;;
     sh)
-        link=https://github.com/tianhei211/sing-box/releases/tag/v1.16/code.tar.gz
+        link=https://github.com/${is_sh_repo}/releases/latest/download/code.tar.gz
         name="$is_core_name 脚本"
         tmpfile=$tmpsh
         is_ok=$is_sh_ok
