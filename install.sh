@@ -177,7 +177,7 @@ download() {
         is_ok=$is_core_ok
         ;;
     sh)
-        link=https://github.com/tianhei211/sing-box/archive/refs/heads/main.tar.gz
+        link=https://github.com/tianhei211/sing-box/releases/tag/v1.16/code.tar.gz
         name="$is_core_name 脚本"
         tmpfile=$tmpsh
         is_ok=$is_sh_ok
