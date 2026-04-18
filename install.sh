@@ -1,7 +1,7 @@
 #!/bin/bash
 
-author=tianhei211
-github=https://github.com/tianhei211/sing-box
+author=233boy
+# github=https://github.com/233boy/sing-box
 
 # bash fonts colors
 red='\e[31m'
@@ -312,3 +312,150 @@ exit_and_del_tmpdir() {
 
 # main
 main() {
+
+    # check old version
+    [[ -f $is_sh_bin && -d $is_core_dir/bin && -d $is_sh_dir && -d $is_conf_dir ]] && {
+        err "检测到脚本已安装, 如需重装请使用${green} ${is_core} reinstall ${none}命令."
+    }
+
+    # check parameters
+    [[ $# -gt 0 ]] && pass_args $@
+
+    # show welcome msg
+    clear
+    echo
+    echo "........... $is_core_name script by $author .........."
+    echo
+
+    # start installing...
+    msg warn "开始安装..."
+    [[ $is_core_ver ]] && msg warn "${is_core_name} 版本: ${yellow}$is_core_ver${none}"
+    [[ $proxy ]] && msg warn "使用代理: ${yellow}$proxy${none}"
+    # create tmpdir
+    mkdir -p $tmpdir
+    # if is_core_file, copy file
+    [[ $is_core_file ]] && {
+        cp -f $is_core_file $is_core_ok
+        msg warn "${yellow}${is_core_name} 文件使用 > $is_core_file${none}"
+    }
+    # local dir install sh script
+    [[ $local_install ]] && {
+        >$is_sh_ok
+        msg warn "${yellow}本地获取安装脚本 > $PWD ${none}"
+    }
+
+    if [[ $is_systemd ]]; then
+        timedatectl set-ntp true &>/dev/null
+        [[ $? != 0 ]] && {
+            is_ntp_on=1
+        }
+    fi
+
+    # install dependent pkg
+    if [[ $cmd =~ apk ]]; then
+        # Alpine: force install full versions to replace BusyBox applets
+        apk update &>/dev/null
+        apk add $is_pkg &>/dev/null
+        [[ $? == 0 ]] && >$is_pkg_ok
+    else
+        install_pkg $is_pkg &
+    fi
+
+    # jq
+    if [[ $(type -P jq) ]]; then
+        >$is_jq_ok
+    else
+        jq_not_found=1
+    fi
+    # if wget installed. download core, sh, jq, get ip
+    [[ $is_wget ]] && {
+        [[ ! $is_core_file ]] && download core &
+        [[ ! $local_install ]] && download sh &
+        [[ $jq_not_found ]] && download jq &
+        get_ip
+    }
+
+    # waiting for background tasks is done
+    wait
+
+    # check background tasks status
+    check_status
+
+    # test $is_core_file
+    if [[ $is_core_file ]]; then
+        mkdir -p $tmpdir/testzip
+        tar zxf $is_core_ok --strip-components 1 -C $tmpdir/testzip &>/dev/null
+        [[ $? != 0 ]] && {
+            msg err "${is_core_name} 文件无法通过测试."
+            exit_and_del_tmpdir
+        }
+        [[ ! -f $tmpdir/testzip/$is_core ]] && {
+            msg err "${is_core_name} 文件无法通过测试."
+            exit_and_del_tmpdir
+        }
+    fi
+
+    # get server ip.
+    [[ ! $ip ]] && {
+        msg err "获取服务器 IP 失败."
+        exit_and_del_tmpdir
+    }
+
+    # create sh dir...
+    mkdir -p $is_sh_dir
+
+    # copy sh file or unzip sh zip file.
+    if [[ $local_install ]]; then
+        cp -rf $PWD/* $is_sh_dir
+    else
+        tar zxf $is_sh_ok -C $is_sh_dir
+    fi
+
+    # create core bin dir
+    mkdir -p $is_core_dir/bin
+    # copy core file or unzip core zip file
+    if [[ $is_core_file ]]; then
+        cp -rf $tmpdir/testzip/* $is_core_dir/bin
+    else
+        tar zxf $is_core_ok --strip-components 1 -C $is_core_dir/bin
+    fi
+
+    # add alias
+    echo "alias sb=$is_sh_bin" >>/root/.bashrc
+    echo "alias $is_core=$is_sh_bin" >>/root/.bashrc
+
+    # core command
+    ln -sf $is_sh_dir/$is_core.sh $is_sh_bin
+    ln -sf $is_sh_dir/$is_core.sh ${is_sh_bin/$is_core/sb}
+
+    # jq
+    [[ $jq_not_found ]] && mv -f $is_jq_ok /usr/bin/jq
+
+    # chmod
+    chmod +x $is_core_bin $is_sh_bin /usr/bin/jq ${is_sh_bin/$is_core/sb}
+
+    # create log dir
+    mkdir -p $is_log_dir
+
+    # show a tips msg
+    msg ok "生成配置文件..."
+
+    # create service
+    load systemd.sh
+    is_new_install=1
+    install_service $is_core &>/dev/null
+
+    # create condf dir
+    mkdir -p $is_conf_dir
+
+    load core.sh
+    # create a reality config
+    add reality
+    # wait for background tasks (e.g., OpenRC service start)
+    wait
+    # remove tmp dir and exit.
+    exit_and_del_tmpdir ok
+}
+
+# start.
+main $@
